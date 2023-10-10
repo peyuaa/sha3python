@@ -1,10 +1,37 @@
 def rol64(a, n):
-    n = n % 64  # Ensure n is within the range [0, 63]
+    """
+        Rotate a 64-bit integer left by 'n' bits.
+
+        Parameters:
+            a (int): The 64-bit integer to be rotated.
+            n (int): The number of bits to rotate 'a' to the left.
+
+        Returns:
+            int: The result of rotating 'a' left by 'n' bits.
+
+        Example:
+            >>> rol64(4, 2)
+            16
+        """
+
+    # Ensure 'n' is within the range [0, 63] to handle large rotations
+    n = n % 64
+
+    # Initialize the result to 0
     result = 0
+
+    # Iterate over 64 bits of 'a' and perform left rotation
     for i in range(64):
-        bit_at_i = (a >> i) & 1  # Get the i-th bit of 'a'
-        new_position = (i + n) % 64  # Calculate the new position after rotation
-        result |= (bit_at_i << new_position)  # Set the bit in the result
+        # Get the i-th bit of 'a'
+        bit_at_i = (a >> i) & 1
+
+        # Calculate the new position after left rotation
+        new_position = (i + n) % 64
+
+        # Set the bit in the result at the new position
+        result |= (bit_at_i << new_position)
+
+    # Return the result, which is 'a' left-rotated by 'n' bits
     return result
 
 
@@ -48,13 +75,55 @@ def keccak_f1600on_lanes(lanes):
 
 
 def load64(b):
+    """
+        Load a 64-bit integer from a bytearray.
+
+        This function takes a bytearray 'b' containing 8 bytes and converts it
+        into a 64-bit integer by combining the bytes in little-endian order.
+
+        Parameters:
+            b (bytearray): A bytearray containing 8 bytes of data.
+
+        Returns:
+            int: A 64-bit integer obtained by combining the bytes in little-endian order.
+
+        Example:
+            >>> load64(bytearray([0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08]))
+            578437695752307201
+        """
+
+    # Initialize the result to 0
     result = 0
+
+    # Iterate over 8 bytes in little-endian order and combine them into a 64-bit integer
     for i in range(8):
-        result |= (b[i] << (8 * i))
+        # Extract the i-th byte from the bytearray 'b' and shift it to its position
+        byte = b[i]
+
+        # Combine the byte with the result using bitwise OR and left shift
+        result |= (byte << (8 * i))
+
+    # Return the 64-bit integer obtained by combining the bytes in little-endian order
     return result
 
 
 def store64(a):
+    """
+        Convert a 64-bit integer to a bytearray.
+
+        This function takes a 64-bit integer 'a' and converts it into an array
+        containing 8 bytes in little-endian order.
+
+        Parameters:
+            a (int): A 64-bit integer to be converted into a bytearray.
+
+        Returns:
+            bytearray: An array containing 8 bytes representing the value of 'a' in little-endian order.
+
+        Example:
+            >>> store64(578437695752307201)
+            [1, 2, 3, 4, 5, 6, 7, 8]
+        """
     result = []
     for i in range(8):
         byte = (a >> (8 * i)) & 0xFF
@@ -63,25 +132,86 @@ def store64(a):
 
 
 def keccak_f1600(state):
+    """
+        Apply the Keccak-f[1600] permutation to the state.
+
+        This function takes a state bytearray and applies the Keccak-f[1600] permutation
+        to it, which consists of a series of transformations, including θ, ρ, π, χ, and ι.
+
+        Parameters:
+            state (bytearray): The state bytearray to be transformed.
+
+        Returns:
+            bytearray: The transformed state bytearray after applying Keccak-f[1600].
+
+        Example:
+            >>> initial_state = bytearray([0] * 200)
+            >>> transformed_state = keccak_f1600(initial_state)
+
+        Note:
+            This function operates directly on the 'state' bytearray and modifies it in place.
+        """
+
+    # Initialize an empty list 'lanes' to hold the 64-bit lanes of the state matrix
     lanes = []
+
+    # Iterate over the rows and columns of the state matrix
     for x in range(5):
-        row = []
+        row = []  # Initialize a row to hold lanes for each column
         for y in range(5):
+            # Calculate the start and end indices for extracting 8 bytes (64 bits) from the state
             start = 8 * (x + 5 * y)
             end = 8 * (x + 5 * y) + 8
+
+            # Extract a 64-bit lane from the state and append it to the row
             lane = load64(state[start:end])
             row.append(lane)
+
+        # Append the row of lanes to the 'lanes' list
         lanes.append(row)
 
+    # Apply the Keccak-f[1600] permutation on the 'lanes'
     lanes = keccak_f1600on_lanes(lanes)
+
+    # Create a new 'state' bytearray with a size of 200 bytes
     state = bytearray(200)
+
+    # Copy the transformed 'lanes' back into the 'state' bytearray
     for x in range(5):
         for y in range(5):
+            # Extract a lane from 'lanes' and store it in the 'state'
             state[8 * (x + 5 * y):8 * (x + 5 * y) + 8] = store64(lanes[x][y])
+
+    # Return the updated 'state' bytearray after Keccak-f[1600] permutation
     return state
 
 
 def keccak(rate, capacity, input_bytes, delimiter, output_byte_len):
+    """
+        Compute a Keccak sponge-based hash or SHAKE hash.
+
+        This function applies the Keccak sponge construction to absorb input bytes,
+        perform padding, and squeeze out an output hash of the specified length.
+
+        Parameters:
+            rate (int): The rate of the sponge construction in bits (e.g., 1344 for SHAKE128).
+            capacity (int): The capacity of the sponge construction in bits (e.g., 256 for SHAKE128).
+            input_bytes (bytes): The input bytes to be hashed.
+            delimiter (int): A delimiter value used in padding.
+            output_byte_len (int): The desired length of the output hash in bytes.
+
+        Returns:
+            bytearray: The computed hash as a bytearray.
+
+        Example:
+            >>> input_data = b"Hello, World!"
+            >>> hash_output = keccak(1344, 256, input_data, 0x1F, 64)
+
+        Note:
+            - This function can be used to compute both Keccak hash and SHAKE hash.
+            - The 'rate' and 'capacity' parameters determine the security level and hash length.
+            - Padding is automatically applied based on the 'delimiter'.
+        """
     output_bytes = bytearray()
     state = bytearray([0 for _ in range(200)])
     rate_in_bytes = rate // 8
@@ -115,26 +245,155 @@ def keccak(rate, capacity, input_bytes, delimiter, output_byte_len):
 
 
 def shake128(input_bytes, output_byte_len):
+    """
+        Compute a SHAKE128 hash.
+
+        This function computes a SHAKE128 hash using the Keccak sponge construction.
+        SHAKE128 produces a variable-length output hash of the specified length.
+
+        Parameters:
+            input_bytes (bytes): The input bytes to be hashed.
+            output_byte_len (int): The desired length of the output hash in bytes.
+
+        Returns:
+            bytearray: The computed SHAKE128 hash as a bytearray.
+
+        Example:
+            >>> input_data = b"Hello, World!"
+            >>> hash_output = shake128(input_data, 64)
+
+        Note:
+            - SHAKE128 is an SHA-3 derived hash that produces variable-length output.
+            - The 'output_byte_len' parameter determines the length of the hash.
+            - The function internally uses Keccak with a rate of 1344 and a capacity of 256.
+        """
+    # Delegate to the 'keccak' function with specific parameters
     return keccak(1344, 256, input_bytes, 0x1F, output_byte_len)
 
 
 def shake256(input_bytes, output_byte_len):
+    """
+        Compute a SHAKE256 hash.
+
+        This function computes a SHAKE256 hash using the Keccak sponge construction.
+        SHAKE256 produces a variable-length output hash of the specified length.
+
+        Parameters:
+            input_bytes (bytes): The input bytes to be hashed.
+            output_byte_len (int): The desired length of the output hash in bytes.
+
+        Returns:
+            bytearray: The computed SHAKE256 hash as a bytearray.
+
+        Example:
+            >>> input_data = b"Hello, World!"
+            >>> hash_output = shake256(input_data, 64)
+
+        Note:
+            - SHAKE256 is an SHA-3 derived hash that produces variable-length output.
+            - The 'output_byte_len' parameter determines the length of the hash.
+            - The function internally uses Keccak with a rate of 1088 and a capacity of 512.
+        """
+    # Delegate to the 'keccak' function with specific parameters
     return keccak(1088, 512, input_bytes, 0x1F, output_byte_len)
 
 
 def sha3_224(input_bytes):
+    """
+        Compute a SHA3-224 hash.
+
+        This function computes a SHA3-224 hash using the Keccak sponge construction.
+        SHA3-224 produces a fixed-length output hash of 224 bits (28 bytes).
+
+        Parameters:
+            input_bytes (bytes): The input bytes to be hashed.
+
+        Returns:
+            bytearray: The computed SHA3-224 hash as a bytearray.
+
+        Example:
+            >>> input_data = b"Hello, World!"
+            >>> hash_output = sha3_224(input_data)
+
+        Note:
+            - SHA3-224 is one of the SHA-3 hash functions with a fixed output length of 224 bits.
+            - The function internally uses Keccak with a rate of 1152 and a capacity of 448.
+        """
     return keccak(1152, 448, input_bytes, 0x06, 224 // 8)
 
 
 def sha3_256(input_bytes):
+    """
+        Compute a SHA3-256 hash.
+
+        This function computes a SHA3-256 hash using the Keccak sponge construction.
+        SHA3-256 produces a fixed-length output hash of 256 bits (32 bytes).
+
+        Parameters:
+            input_bytes (bytes): The input bytes to be hashed.
+
+        Returns:
+            bytearray: The computed SHA3-256 hash as a bytearray.
+
+        Example:
+            >>> input_data = b"Hello, World!"
+            >>> hash_output = sha3_256(input_data)
+
+        Note:
+            - SHA3-256 is one of the SHA-3 hash functions with a fixed output length of 256 bits.
+            - The function internally uses Keccak with a rate of 1088 and a capacity of 512.
+        """
+    # Delegate to the 'keccak' function with specific parameters for SHA3-256
     return keccak(1088, 512, input_bytes, 0x06, 256 // 8)
 
 
 def sha3_384(input_bytes):
+    """
+        Compute a SHA3-384 hash.
+
+        This function computes a SHA3-384 hash using the Keccak sponge construction.
+        SHA3-384 produces a fixed-length output hash of 384 bits (48 bytes).
+
+        Parameters:
+            input_bytes (bytes): The input bytes to be hashed.
+
+        Returns:
+            bytearray: The computed SHA3-384 hash as a bytearray.
+
+        Example:
+            >>> input_data = b"Hello, World!"
+            >>> hash_output = sha3_384(input_data)
+
+        Note:
+            - SHA3-384 is one of the SHA-3 hash functions with a fixed output length of 384 bits.
+            - The function internally uses Keccak with a rate of 832 and a capacity of 768.
+        """
+    # Delegate to the 'keccak' function with specific parameters for SHA3-384
     return keccak(832, 768, input_bytes, 0x06, 384 // 8)
 
 
 def sha3_512(input_bytes):
+    """
+        Compute a SHA3-512 hash.
+
+        This function computes a SHA3-512 hash using the Keccak sponge construction.
+        SHA3-512 produces a fixed-length output hash of 512 bits (64 bytes).
+
+        Parameters:
+            input_bytes (bytes): The input bytes to be hashed.
+
+        Returns:
+            bytearray: The computed SHA3-512 hash as a bytearray.
+
+        Example:
+            >>> input_data = b"Hello, World!"
+            >>> hash_output = sha3_512(input_data)
+
+        Note:
+            - SHA3-512 is one of the SHA-3 hash functions with a fixed output length of 512 bits.
+            - The function internally uses Keccak with a rate of 576 and a capacity of 1024.
+        """
+    # Delegate to the 'keccak' function with specific parameters for SHA3-512
     return keccak(576, 1024, input_bytes, 0x06, 512 // 8)
 
 

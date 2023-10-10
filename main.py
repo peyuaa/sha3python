@@ -34,6 +34,7 @@ def rol64(a, n):
     # Return the result, which is 'a' left-rotated by 'n' bits
     return result
 
+
 def theta(lanes):
     c = [0] * 5
     for x in range(5):
@@ -47,7 +48,6 @@ def theta(lanes):
     for x in range(5):
         for y in range(5):
             lanes[x][y] ^= d[x]
-
 
 
 def rho_and_pi(lanes):
@@ -64,6 +64,14 @@ def chi(lanes):
         t = [lanes[x][y] for x in range(5)]
         for x in range(5):
             lanes[x][y] = t[x] ^ ((~t[(x + 1) % 5]) & t[(x + 2) % 5])
+
+
+def iota(lanes, r):
+    for j in range(7):
+        r = ((r << 1) ^ ((r >> 7) * 0x71)) % 256
+        if r & 2:
+            lanes[0][0] = lanes[0][0] ^ (1 << ((1 << j) - 1))
+    return r
 
 
 def keccak_f1600on_lanes(lanes):
@@ -101,11 +109,9 @@ def keccak_f1600on_lanes(lanes):
 
         # χ
         chi(lanes)
-        # ι
-        for j in range(7):
-            r = ((r << 1) ^ ((r >> 7) * 0x71)) % 256
-            if r & 2:
-                lanes[0][0] = lanes[0][0] ^ (1 << ((1 << j) - 1))
+
+        # ι transformation and update round constant
+        r = iota(lanes, r)
     return lanes
 
 

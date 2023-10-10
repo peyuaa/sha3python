@@ -34,6 +34,37 @@ def rol64(a, n):
     # Return the result, which is 'a' left-rotated by 'n' bits
     return result
 
+def theta(lanes):
+    c = [0] * 5
+    for x in range(5):
+        for y in range(5):
+            c[x] ^= lanes[x][y]
+
+    d = [0] * 5
+    for x in range(5):
+        d[x] = c[(x + 4) % 5] ^ rol64(c[(x + 1) % 5], 1)
+
+    for x in range(5):
+        for y in range(5):
+            lanes[x][y] ^= d[x]
+
+
+
+def rho_and_pi(lanes):
+    r = 1
+    (x, y) = (1, 0)
+    current = lanes[x][y]
+    for t in range(24):
+        (x, y) = (y, (2 * x + 3 * y) % 5)
+        (current, lanes[x][y]) = (lanes[x][y], rol64(current, (t + 1) * (t + 2) // 2))
+
+
+def chi(lanes):
+    for y in range(5):
+        t = [lanes[x][y] for x in range(5)]
+        for x in range(5):
+            lanes[x][y] = t[x] ^ ((~t[(x + 1) % 5]) & t[(x + 2) % 5])
+
 
 def keccak_f1600on_lanes(lanes):
     """
@@ -63,33 +94,13 @@ def keccak_f1600on_lanes(lanes):
     # Apply 24 rounds of the Keccak-f[1600] permutation
     for rnd in range(24):
         # θ
-        c = [0] * 5  # Initialize c as a list of zeros with length 5
-        for x in range(5):
-            for y in range(5):
-                c[x] ^= lanes[x][y]
-
-        d = [0] * 5  # Initialize d as a list of zeros with length 5
-        for x in range(5):
-            d[x] = c[(x + 4) % 5] ^ rol64(c[(x + 1) % 5], 1)
-
-        for x in range(5):
-            for y in range(5):
-                lanes[x][y] ^= d[x]
+        theta(lanes)
 
         # ρ and π
-        (x, y) = (1, 0)
-        current = lanes[x][y]
-        for t in range(24):
-            (x, y) = (y, (2 * x + 3 * y) % 5)
-            (current, lanes[x][y]) = (lanes[x][y], rol64(current, (t + 1) * (t + 2) // 2))
-        # χ
-        for y in range(5):
-            t = []
-            for x in range(5):
-                t.append(lanes[x][y])
+        rho_and_pi(lanes)
 
-            for x in range(5):
-                lanes[x][y] = t[x] ^ ((~t[(x + 1) % 5]) & t[(x + 2) % 5])
+        # χ
+        chi(lanes)
         # ι
         for j in range(7):
             r = ((r << 1) ^ ((r >> 7) * 0x71)) % 256

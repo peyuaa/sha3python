@@ -51,7 +51,6 @@ def theta(lanes):
 
 
 def rho_and_pi(lanes):
-    r = 1
     (x, y) = (1, 0)
     current = lanes[x][y]
     for t in range(24):

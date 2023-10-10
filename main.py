@@ -36,7 +36,31 @@ def rol64(a, n):
 
 
 def keccak_f1600on_lanes(lanes):
+    """
+        Apply the Keccak-f[1600] permutation to a state represented as lanes.
+
+        This function applies the Keccak-f[1600] permutation to a state represented as lanes,
+        including the θ, ρ, π, χ, and ι rounds.
+
+        Parameters:
+            lanes (list[list[int]]): A list of 5x5 lanes, each containing a 64-bit integer.
+
+        Returns:
+            list[list[int]]: The transformed state represented as lanes after applying Keccak-f[1600].
+
+        Example:
+            >>> initial_state = [[0] * 5 for _ in range(5)]  # Initialize an empty state
+            >>> transformed_state = keccak_f1600on_lanes(initial_state)
+
+        Note:
+            This function operates directly on the 'lanes' list and modifies it in place.
+
+        See Also:
+            - The Keccak-f[1600] permutation details in FIPS 202.
+        """
     r = 1
+
+    # Apply 24 rounds of the Keccak-f[1600] permutation
     for rnd in range(24):
         # θ
         c = [0] * 5  # Initialize c as a list of zeros with length 5
@@ -125,8 +149,13 @@ def store64(a):
             [1, 2, 3, 4, 5, 6, 7, 8]
         """
     result = []
+
+    # Iterate over 8 bytes
     for i in range(8):
+        # Extract the i-th byte from 'a' using bitwise shifting and masking
         byte = (a >> (8 * i)) & 0xFF
+
+        # Append the extracted byte to the result list
         result.append(byte)
     return result
 
@@ -212,35 +241,73 @@ def keccak(rate, capacity, input_bytes, delimiter, output_byte_len):
             - The 'rate' and 'capacity' parameters determine the security level and hash length.
             - Padding is automatically applied based on the 'delimiter'.
         """
+
+    # Initialize an empty bytearray to store the output hash
     output_bytes = bytearray()
+
+    # Initialize the state bytearray with 200 bytes of zeros
     state = bytearray([0 for _ in range(200)])
+
+    # Calculate the rate in bytes
     rate_in_bytes = rate // 8
+
+    # Initialize the block size to 0
     block_size = 0
+
+    # Validate that the rate and capacity values meet Keccak requirements
     if ((rate + capacity) != 1600) or ((rate % 8) != 0):
         return
+
+    # Initialize the input offset to 0
     input_offset = 0
+
     # === Absorb all the input blocks ===
     while input_offset < len(input_bytes):
+        # Determine the size of the current block to be absorbed
         block_size = min(len(input_bytes) - input_offset, rate_in_bytes)
+
+        # XOR the current block of input bytes with the state
         for i in range(block_size):
             state[i] = state[i] ^ input_bytes[i + input_offset]
+
+        # Update the input offset
         input_offset = input_offset + block_size
+
+        # If a full block is processed, apply Keccak-f[1600] permutation
         if block_size == rate_in_bytes:
             state = keccak_f1600(state)
             block_size = 0
+
     # === Do the padding and switch to the squeezing phase ===
+    # XOR the delimiter with the last byte of the current block
     state[block_size] = state[block_size] ^ delimiter
+
+    # Check if the delimiter's MSB (most significant bit) is set, and if block_size is one less than the rate_in_bytes
     if ((delimiter & 0x80) != 0) and (block_size == (rate_in_bytes - 1)):
         state = keccak_f1600(state)
+
+    # Set the last byte of the current block's MSB to 1
     state[rate_in_bytes - 1] = state[rate_in_bytes - 1] ^ 0x80
+
+    # Apply Keccak-f[1600] one more time
     state = keccak_f1600(state)
+
     # === Squeeze out all the output blocks ===
     while output_byte_len > 0:
+        # Determine the size of the current block to be squeezed
         block_size = min(output_byte_len, rate_in_bytes)
+
+        # Append the block of bytes to the output
         output_bytes = output_bytes + state[0:block_size]
+
+        # Update the remaining output length
         output_byte_len = output_byte_len - block_size
+
+        # If there's more output to generate, apply Keccak-f[1600] again
         if output_byte_len > 0:
             state = keccak_f1600(state)
+
+    # Return the computed output hash
     return output_bytes
 
 

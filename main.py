@@ -1,3 +1,8 @@
+import hashlib
+import time
+import unittest
+
+
 def rol64(a, n):
     """
         Rotate a 64-bit integer left by 'n' bits.
@@ -480,6 +485,32 @@ def sha3_512(input_bytes):
     return keccak(576, 1024, input_bytes, 0x06, 512 // 8)
 
 
-digest = sha3_512(b"TI PIDOR.")
-hex_representation = ''.join(['{:02x}'.format(b) for b in digest])
-print(hex_representation)
+class TestSHA3Functions(unittest.TestCase):
+    def test_sha3_224_with_file_input(self):
+        # Read the input data from message.txt
+        with open('message.txt', 'rb') as file:
+            input_data = file.read()
+
+        start_time_builtin = time.time()
+        expected_hash = hashlib.sha3_224(input_data).digest()
+        end_time_builtin = time.time()
+
+        start_time_mine = time.time()
+        hash_result = sha3_224(input_data)
+        end_time_mine = time.time()
+
+        self.assertEqual(expected_hash, hash_result)
+
+        print("Builtin SHA3-224 took: ", end_time_builtin - start_time_builtin)
+        print("My SHA3-224 took: ", end_time_mine - start_time_mine)
+
+        # Print a message indicating that the test has passed
+        print("Test passed: The hashes match!")
+
+
+if __name__ == "__main__":
+    unittest.main()
+
+# digest = sha3_512(b"Test lalalldsl;fksdkjfsdklfjsdklfnkwelfnk43nr4u.")
+# hex_representation = ''.join(['{:02x}'.format(b) for b in digest])
+# print(hex_representation)
